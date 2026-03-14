@@ -189,7 +189,7 @@ class SingleSelectList implements Component {
 			if (this.isFreeformRow(i)) {
 				const label = theme.fg("text", theme.bold("Type something."));
 				const desc = theme.fg("muted", "Enter a custom response");
-				const line = `${prefix}   ${label} ${theme.fg("dim", "—")} ${desc}`;
+				const line = `${prefix}    ${label} ${theme.fg("dim", "—")} ${desc}`;
 				lines.push(truncateToWidth(line, width, ""));
 				continue;
 			}
@@ -357,7 +357,7 @@ class MultiSelectList implements Component {
 			if (this.isFreeformRow(i)) {
 				const label = theme.fg("text", theme.bold("Type something."));
 				const desc = theme.fg("muted", "Enter a custom response");
-				const line = `${prefix}   ${label} ${theme.fg("dim", "—")} ${desc}`;
+				const line = `${prefix}    ${label} ${theme.fg("dim", "—")} ${desc}`;
 				lines.push(truncateToWidth(line, width, ""));
 				continue;
 			}
