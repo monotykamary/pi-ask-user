@@ -6,7 +6,6 @@
  */
 
 import type { ExtensionAPI, Theme } from "@mariozechner/pi-coding-agent";
-import { DynamicBorder } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
 import {
 	Container,
@@ -19,6 +18,7 @@ import {
 	Text,
 	type TUI,
 	truncateToWidth,
+	visibleWidth,
 	wrapTextWithAnsi,
 } from "@mariozechner/pi-tui";
 
@@ -197,6 +197,10 @@ class SingleSelectList implements Component {
 			const prefix = isSelected ? theme.fg("accent", "→") : " ";
 
 			if (this.isFreeformRow(i)) {
+				// Add empty line before "Type something" for visual separation
+				if (i === this.options.length) {
+					lines.push("");
+				}
 				const label = theme.fg("text", theme.bold("Type something."));
 				const desc = theme.fg("muted", "Enter a custom response");
 				const line = `${prefix}    ${label} ${theme.fg("dim", "—")} ${desc}`;
@@ -365,6 +369,10 @@ class MultiSelectList implements Component {
 			const prefix = isSelected ? theme.fg("accent", "→") : " ";
 
 			if (this.isFreeformRow(i)) {
+				// Add empty line before "Type something" for visual separation
+				if (i === this.options.length) {
+					lines.push("");
+				}
 				const label = theme.fg("text", theme.bold("Type something."));
 				const desc = theme.fg("muted", "Enter a custom response");
 				const line = `${prefix}    ${label} ${theme.fg("dim", "—")} ${desc}`;
@@ -401,6 +409,58 @@ class MultiSelectList implements Component {
 
 		this.cachedWidth = width;
 		this.cachedLines = lines;
+		return lines;
+	}
+}
+
+/**
+ * Simple box border component that wraps content in a complete box outline.
+ * Uses box-drawing characters: ┌─┐ │ └─┘
+ */
+class BoxBorder implements Component {
+	private child: Component;
+	private colorFn: (s: string) => string;
+
+	constructor(child: Component, colorFn: (s: string) => string) {
+		this.child = child;
+		this.colorFn = colorFn;
+	}
+
+	invalidate(): void {
+		this.child.invalidate?.();
+	}
+
+	render(width: number): string[] {
+		if (width < 5) return [];
+		const contentWidth = width - 5; // Space for borders (2) + left pad (1) + right pad (2)
+		const contentLines = this.child.render(contentWidth);
+
+		const colored = {
+			topLeft: this.colorFn("┌"),
+			topRight: this.colorFn("┐"),
+			bottomLeft: this.colorFn("└"),
+			bottomRight: this.colorFn("┘"),
+			horizontal: this.colorFn("─"),
+			vertical: this.colorFn("│"),
+		};
+
+		const lines: string[] = [];
+
+		// Top border: ┌───────┐
+		const topBorder = colored.topLeft + colored.horizontal.repeat(width - 2) + colored.topRight;
+		lines.push(topBorder);
+
+		// Content lines with vertical borders and 1 char left padding, 2 char right padding: │ content  │
+		for (const line of contentLines) {
+			const visibleLen = visibleWidth(line);
+			const rightPad = " ".repeat(Math.max(0, contentWidth - visibleLen));
+			lines.push(colored.vertical + " " + truncateToWidth(line, contentWidth, "") + rightPad + "  " + colored.vertical);
+		}
+
+		// Bottom border: └───────┘
+		const bottomBorder = colored.bottomLeft + colored.horizontal.repeat(width - 2) + colored.bottomRight;
+		lines.push(bottomBorder);
+
 		return lines;
 	}
 }
@@ -467,34 +527,37 @@ class AskComponent extends Container {
 		this.theme = theme;
 		this.onDone = onDone;
 
-		// Layout skeleton
-		this.addChild(new DynamicBorder((s: string) => theme.fg("accent", s)));
-		this.addChild(new Spacer(1));
+		// Layout skeleton - wrapped in a single box border
+		const contentContainer = new Container();
+
+		contentContainer.addChild(new Spacer(1));
 
 		this.titleText = new Text("", 1, 0);
-		this.addChild(this.titleText);
-		this.addChild(new Spacer(1));
+		contentContainer.addChild(this.titleText);
+		contentContainer.addChild(new Spacer(1));
 
 		this.questionText = new Text("", 1, 0);
-		this.addChild(this.questionText);
+		contentContainer.addChild(this.questionText);
 
 		if (this.context) {
-			this.addChild(new Spacer(1));
+			contentContainer.addChild(new Spacer(1));
 			this.contextText = new Text("", 1, 0);
-			this.addChild(this.contextText);
+			contentContainer.addChild(this.contextText);
 		}
 
-		this.addChild(new Spacer(1));
+		contentContainer.addChild(new Spacer(1));
 
 		this.modeContainer = new Container();
-		this.addChild(this.modeContainer);
+		contentContainer.addChild(this.modeContainer);
 
-		this.addChild(new Spacer(1));
+		contentContainer.addChild(new Spacer(1));
 		this.helpText = new Text("", 1, 0);
-		this.addChild(this.helpText);
+		contentContainer.addChild(this.helpText);
 
-		this.addChild(new Spacer(1));
-		this.addChild(new DynamicBorder((s: string) => theme.fg("accent", s)));
+		contentContainer.addChild(new Spacer(1));
+
+		// Wrap everything in a box border
+		this.addChild(new BoxBorder(contentContainer, (s: string) => theme.fg("accent", s)));
 
 		this.updateStaticText();
 		this.showSelectMode();
