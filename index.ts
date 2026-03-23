@@ -24,6 +24,14 @@ import {
 	wrapTextWithAnsi,
 } from "@mariozechner/pi-tui";
 
+// ANSI escape code pattern for visible width calculation
+const ANSI_PATTERN = /\u001b\[\d+(?:;\d+)*m/g;
+
+/** Calculate visible width of a string (excluding ANSI escape codes) */
+function visibleWidth(str: string): number {
+	return str.replace(ANSI_PATTERN, "").length;
+}
+
 interface QuestionOption {
 	title: string;
 	description?: string;
