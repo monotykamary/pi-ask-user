@@ -443,10 +443,17 @@ class MultiSelectList implements Component {
 class BoxBorder implements Component {
 	private child: Component;
 	private colorFn: (s: string) => string;
+	// ANSI escape code pattern for visible width calculation
+	private static ANSI_PATTERN = /\u001b\[\d+(?:;\d+)*m/g;
 
 	constructor(child: Component, colorFn: (s: string) => string) {
 		this.child = child;
 		this.colorFn = colorFn;
+	}
+
+	/** Calculate visible width of a string (excluding ANSI escape codes) */
+	private visibleWidth(str: string): number {
+		return str.replace(BoxBorder.ANSI_PATTERN, "").length;
 	}
 
 	invalidate(): void {
@@ -475,7 +482,7 @@ class BoxBorder implements Component {
 
 		// Content lines with vertical borders and 1 char left padding, 2 char right padding: │ content  │
 		for (const line of contentLines) {
-			const visibleLen = visibleWidth(line);
+			const visibleLen = this.visibleWidth(line);
 			const rightPad = " ".repeat(Math.max(0, contentWidth - visibleLen));
 			lines.push(colored.vertical + " " + truncateToWidth(line, contentWidth, "") + rightPad + "  " + colored.vertical);
 		}
